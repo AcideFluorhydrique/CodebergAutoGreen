@@ -10,21 +10,30 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # --- 1. Checkout full history (必须) ---
       - name: Checkout full GitHub history
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # ← 这是解决 shallow update not allowed 的关键
+          fetch-depth: 0
 
+      # --- 2. 设置 Codeberg 识别的用户名与邮箱 ---
       - name: Configure Git identity
         run: |
           git config --global user.name "lanticy"
           git config --global user.email "lanticy@noreply.codeberg.org"
 
+      # --- 3. 重写这次提交的作者信息 (Method A 的核心) ---
+      - name: Rewrite commit author for Codeberg
+        run: |
+          git commit --amend --no-edit --author="lanticy <lanticy@noreply.codeberg.org>" || true
+
+      # --- 4. 添加 Codeberg 远端 ---
       - name: Add Codeberg remote
         run: |
           git remote add codeberg "https://${{ secrets.CODEBERG_USERNAME }}:${{ secrets.CODEBERG_TOKEN }}@codeberg.org/${{ secrets.CODEBERG_USERNAME }}/${{ secrets.CODEBERG_REPO }}.git" \
           || git remote set-url codeberg "https://${{ secrets.CODEBERG_USERNAME }}:${{ secrets.CODEBERG_TOKEN }}@codeberg.org/${{ secrets.CODEBERG_USERNAME }}/${{ secrets.CODEBERG_REPO }}.git"
 
+      # --- 5. 推送到 Codeberg ---
       - name: Push to Codeberg
         run: |
           git push codeberg HEAD:main --force

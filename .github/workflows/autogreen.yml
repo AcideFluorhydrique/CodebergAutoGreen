@@ -10,18 +10,21 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout GitHub repository
-      uses: actions/checkout@v4
+      - name: Checkout full GitHub history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # ← 这是解决 shallow update not allowed 的关键
 
-    - name: Configure Git identity
-      run: |
-        git config --global user.name "lanticy"
-        git config --global user.email "lanticy@noreply.codeberg.org"
+      - name: Configure Git identity
+        run: |
+          git config --global user.name "lanticy"
+          git config --global user.email "lanticy@noreply.codeberg.org"
 
-    - name: Add Codeberg remote
-      run: |
-        git remote add codeberg "https://${{ secrets.CODEBERG_USERNAME }}:${{ secrets.CODEBERG_TOKEN }}@codeberg.org/${{ secrets.CODEBERG_USERNAME }}/${{ secrets.CODEBERG_REPO }}.git"
+      - name: Add Codeberg remote
+        run: |
+          git remote add codeberg "https://${{ secrets.CODEBERG_USERNAME }}:${{ secrets.CODEBERG_TOKEN }}@codeberg.org/${{ secrets.CODEBERG_USERNAME }}/${{ secrets.CODEBERG_REPO }}.git" \
+          || git remote set-url codeberg "https://${{ secrets.CODEBERG_USERNAME }}:${{ secrets.CODEBERG_TOKEN }}@codeberg.org/${{ secrets.CODEBERG_USERNAME }}/${{ secrets.CODEBERG_REPO }}.git"
 
-    - name: Push to Codeberg
-      run: |
-        git push codeberg HEAD:main --force
+      - name: Push to Codeberg
+        run: |
+          git push codeberg HEAD:main --force

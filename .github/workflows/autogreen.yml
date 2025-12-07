@@ -1,0 +1,47 @@
+name: Auto-Green → Codeberg
+
+on:
+  schedule:
+    - cron: "0 0 * * *"   # 每天 00:00 UTC 自动执行
+  workflow_dispatch:        # 手动触发也可
+
+jobs:
+  push-to-codeberg:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set git identity
+        run: |
+          git config --global user.name "lanticy"
+          git config --global user.email "lanticy@noreply.codeberg.org"
+          # ↑ 请把 email 改成你在 Codeberg 账户设置中使用的 email
+          #    否则 Codeberg 不会把贡献计入你的绿点！
+
+      - name: Write timestamp for Auto-Green
+        run: |
+          echo "Update at $(date -u)" > autogreen.txt
+          git add autogreen.txt
+          if git diff --cached --quiet; then
+            echo "No changes — skip"
+            exit 0
+          fi
+          git commit -m "Auto-Green $(date -u +"%Y-%m-%d %H:%M:%S")"
+
+      - name: Push to Codeberg
+        env:
+          CODEBERG_TOKEN: ${{ secrets.CODEBERG_TOKEN }}
+          CODEBERG_REPO: ${{ secrets.CODEBERG_REPO }}
+        run: |
+          # 把 URL 插入 Token
+          AUTHED_URL=$(echo "$CODEBERG_REPO" | sed -E "s#https://#https://$CODEBERG_TOKEN@#")
+          
+          # 设置远程 codeberg
+          git remote add codeberg "$AUTHED_URL" || git remote set-url codeberg "$AUTHED_URL"
+
+          # 推送到 AutoGreen 仓库的 main 分支
+          git push codeberg HEAD:main --force

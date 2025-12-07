@@ -1,22 +1,22 @@
 name: Push to Codeberg
 
 on:
-  workflow_dispatch:        # 手動觸發
+  workflow_dispatch:          # 手動觸發
   schedule:
-    - cron: "0 */6 * * *"   # 每 6 小時一次，自己改
+    - cron: "0 */6 * * *"     # 每 6 小時自動，按需求可修改
 
 jobs:
   sync:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout GitHub repo
+    - name: Checkout GitHub repository
       uses: actions/checkout@v4
 
-    - name: Setup Git identity
+    - name: Configure Git identity
       run: |
-        git config --global user.name "github-actions"
-        git config --global user.email "github-actions@users.noreply.github.com"
+        git config --global user.name "lanticy"   # ← 你的 Codeberg 顯示名稱
+        git config --global user.email "lanticy@noreply.codeberg.org"  # ← 使用你提供的 noreply email
 
     - name: Add Codeberg remote
       run: |

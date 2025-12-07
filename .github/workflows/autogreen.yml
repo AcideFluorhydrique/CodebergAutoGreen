@@ -1,47 +1,27 @@
-name: Auto-Green → Codeberg
+name: Push to Codeberg
 
 on:
+  workflow_dispatch:        # 手動觸發
   schedule:
-    - cron: "0 0 * * *"   # 每天 00:00 UTC 自动执行
-  workflow_dispatch:        # 手动触发也可
+    - cron: "0 */6 * * *"   # 每 6 小時一次，自己改
 
 jobs:
-  push-to-codeberg:
+  sync:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+    - name: Checkout GitHub repo
+      uses: actions/checkout@v4
 
-      - name: Set git identity
-        run: |
-          git config --global user.name "lanticy"
-          git config --global user.email "lanticy@noreply.codeberg.org"
-          # ↑ 请把 email 改成你在 Codeberg 账户设置中使用的 email
-          #    否则 Codeberg 不会把贡献计入你的绿点！
+    - name: Setup Git identity
+      run: |
+        git config --global user.name "github-actions"
+        git config --global user.email "github-actions@users.noreply.github.com"
 
-      - name: Write timestamp for Auto-Green
-        run: |
-          echo "Update at $(date -u)" > autogreen.txt
-          git add autogreen.txt
-          if git diff --cached --quiet; then
-            echo "No changes — skip"
-            exit 0
-          fi
-          git commit -m "Auto-Green $(date -u +"%Y-%m-%d %H:%M:%S")"
+    - name: Add Codeberg remote
+      run: |
+        git remote add codeberg https://${{ secrets.CODEBERG_USERNAME }}:${{ secrets.CODEBERG_TOKEN }}@codeberg.org/${{ secrets.CODEBERG_USERNAME }}/${{ secrets.CODEBERG_REPO }}.git
 
-      - name: Push to Codeberg
-        env:
-          CODEBERG_TOKEN: ${{ secrets.CODEBERG_TOKEN }}
-          CODEBERG_REPO: ${{ secrets.CODEBERG_REPO }}
-        run: |
-          # 把 URL 插入 Token
-          AUTHED_URL=$(echo "$CODEBERG_REPO" | sed -E "s#https://#https://$CODEBERG_TOKEN@#")
-          
-          # 设置远程 codeberg
-          git remote add codeberg "$AUTHED_URL" || git remote set-url codeberg "$AUTHED_URL"
-
-          # 推送到 AutoGreen 仓库的 main 分支
-          git push codeberg HEAD:main --force
+    - name: Push to Codeberg
+      run: |
+        git push codeberg HEAD:main --force

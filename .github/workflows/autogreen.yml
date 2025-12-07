@@ -1,9 +1,9 @@
 name: Push to Codeberg
 
 on:
-  workflow_dispatch:          # 手動觸發
+  workflow_dispatch:
   schedule:
-    - cron: "0 */6 * * *"     # 每 6 小時自動，按需求可修改
+    - cron: "0 */6 * * *"
 
 jobs:
   sync:
@@ -15,12 +15,12 @@ jobs:
 
     - name: Configure Git identity
       run: |
-        git config --global user.name "lanticy"   # ← 你的 Codeberg 顯示名稱
-        git config --global user.email "lanticy@noreply.codeberg.org"  # ← 使用你提供的 noreply email
+        git config --global user.name "lanticy"
+        git config --global user.email "lanticy@noreply.codeberg.org"
 
     - name: Add Codeberg remote
       run: |
-        git remote add codeberg https://${{ secrets.CODEBERG_USERNAME }}:${{ secrets.CODEBERG_TOKEN }}@codeberg.org/${{ secrets.CODEBERG_USERNAME }}/${{ secrets.CODEBERG_REPO }}.git
+        git remote add codeberg "https://${{ secrets.CODEBERG_USERNAME }}:${{ secrets.CODEBERG_TOKEN }}@codeberg.org/${{ secrets.CODEBERG_USERNAME }}/${{ secrets.CODEBERG_REPO }}.git"
 
     - name: Push to Codeberg
       run: |

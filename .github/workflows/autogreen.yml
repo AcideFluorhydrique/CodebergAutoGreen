@@ -1,33 +1,84 @@
-name: Push to Codeberg
+name: Push to Codeberg (Randomized AutoGreen)
+
 on:
   workflow_dispatch:
   schedule:
-    # 每周一到周四的 UTC 00:00 运行（根据你的时区可能需要调整）
-    - cron: "0 0 * * 1-4"
+    - cron: "17 2 * * 1-5"   # 每週一到週五 UTC 02:17 觸發
+
 jobs:
   sync:
     runs-on: ubuntu-latest
+
     steps:
-      # --- 1. Checkout full history (必须) ---
+      # 1. 必须完整历史
       - name: Checkout full GitHub history
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      # --- 2. 设置 Codeberg 识别的用户名与邮箱 ---
+
+      # 2. 设置 Git 身份（先用 GitHub 身份提交 week_plan）
       - name: Configure Git identity
         run: |
-          git config --global user.name "lanticy"
-          git config --global user.email "lanticy@noreply.codeberg.org"
-      # --- 3. 重写这次提交的作者信息 (Method A 的核心) ---
+          git config --global user.name "AcideFluorhydrique"
+          git config --global user.email "139669368+AcideFluorhydrique@users.noreply.github.com"
+
+      # 3. 随机周计划逻辑（决定今天是否提交）
+      - name: Weekly random plan
+        id: weekplan
+        run: |
+          WEEK_FILE=".week_plan"
+          WEEK_NUM=$(date -u +%V)
+
+          if [ ! -f $WEEK_FILE ] || [ "$(cut -d' ' -f1 $WEEK_FILE)" != "$WEEK_NUM" ]; then
+            TARGET=$((3 + RANDOM % 2))   # 3 或 4 天
+            echo "$WEEK_NUM 0 $TARGET" > $WEEK_FILE
+          fi
+
+          CURRENT=$(cut -d' ' -f2 $WEEK_FILE)
+          TARGET=$(cut -d' ' -f3 $WEEK_FILE)
+
+          if [ "$CURRENT" -ge "$TARGET" ]; then
+            echo "done=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          DAY_OF_WEEK=$(date -u +%u)
+          REMAIN=$((6 - DAY_OF_WEEK))
+          LEFT=$((TARGET - CURRENT))
+
+          if [ "$LEFT" -ge "$REMAIN" ]; then
+            DO_COMMIT=1
+          else
+            DO_COMMIT=$((RANDOM % 2))
+          fi
+
+          if [ "$DO_COMMIT" -eq 1 ]; then
+            CURRENT=$((CURRENT + 1))
+            echo "$WEEK_NUM $CURRENT $TARGET" > $WEEK_FILE
+            git add $WEEK_FILE
+            git commit -m "AutoGreen week $CURRENT/$TARGET"
+            echo "commit=true" >> $GITHUB_OUTPUT
+          else
+            echo "done=true" >> $GITHUB_OUTPUT
+          fi
+
+      # 如果今天不需要提交，后续步骤全部跳过
+      - name: Stop if skip day
+        if: steps.weekplan.outputs.commit != 'true'
+        run: exit 0
+
+      # 4. 改成 Codeberg 作者（核心作弊点）
       - name: Rewrite commit author for Codeberg
         run: |
-          git commit --amend --no-edit --author="lanticy <lanticy@noreply.codeberg.org>" || true
-      # --- 4. 添加 Codeberg 远端 ---
+          git commit --amend --no-edit --author="lanticy <lanticy@noreply.codeberg.org>"
+
+      # 5. 添加 Codeberg remote
       - name: Add Codeberg remote
         run: |
           git remote add codeberg "https://${{ secrets.CODEBERG_USERNAME }}:${{ secrets.CODEBERG_TOKEN }}@codeberg.org/${{ secrets.CODEBERG_USERNAME }}/${{ secrets.CODEBERG_REPO }}.git" \
           || git remote set-url codeberg "https://${{ secrets.CODEBERG_USERNAME }}:${{ secrets.CODEBERG_TOKEN }}@codeberg.org/${{ secrets.CODEBERG_USERNAME }}/${{ secrets.CODEBERG_REPO }}.git"
-      # --- 5. 推送到 Codeberg ---
+
+      # 6. 强制推送到 Codeberg
       - name: Push to Codeberg
         run: |
           git push codeberg HEAD:main --force
